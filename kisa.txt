@@ -1,1 +1,181 @@
-something to do
+%scaner_name LexerScaner
+%codes_type lexem_code
+
+%ident_name Id
+
+%token_fields
+"unsigned __int128 int_val;
+__float128 float_val;"
+
+%class_members
+"__int128 integer_part;
+__int128 fractional_part;
+size_t exponent;
+ssize_t exp_sign;
+size_t frac_part_num_digits;
+bool is_float;
+char32_t precision;
+char32_t char_code;"
+
+%codes
+Mod,         Use,         Get,          Var,
+Type,        Arr,         Big,          Small,
+Int,         Float,       Unsgn,        Bool,
+Symb,        Str,         Nothng,       Byte,
+Int8,        Int16,       Int32,        Int64,
+Int128,      Unsgn8,      Unsgn16,      Unsgn32,
+Unsgn64,     Unsgn128,    Float32,      Float64,
+Float128,    Bool8,       Bool16,       Bool32,
+Bool64,      Symb8,       Symb16,       Symb32,
+Str8,        Str16,       Str32,        Func,
+Val,         Ref,         Const Ref,    Enum,
+Struct,      Const,       True,         False,
+If,          Then,        Ines,         Else,
+End,         Compl,       While,        Rep,
+AsLongAs,    Spider,      At,           Break,
+Continue,    Back,        Ins,          Out,
+Pars
+
+%idents {[:Letter:]|[:letter:]|_}{[:Letter:]|[:letter:]|_|[:digits:]}
+
+%impl_additions "
+  #include <quadmath>
+
+  size_t digit2int(char32_t ch) {
+    size_t v = ch - U'0';
+    return (v<=9)? v : (v&0b1101'1111) - 7;
+  }
+  __int128 setexp(char32_t ch) {
+    return (ch == '-')? -1 : 1;
+  }
+
+  __float128 lexem_code: build_float(){
+    return integer_part + fractional_part*powq(10,-frac_part_num_digits)+exp_sign*exponent;
+  }
+
+  lexem_code precision2code(char32_t ch){
+    switch (ch) {
+      case: 'S':
+        return Single;
+        break;
+      case: 'D':
+        return Double;
+        break;
+      case: 'E':
+        return Extended;
+        break;
+      case: 'Q':
+        return Quatro;
+        break;
+      default:
+        return Single;
+        break;
+    }
+  }
+"
+
+%keywords
+"модуль" : Mod,
+"использует" : Use, 
+"предоставляет" : Get,
+"перем" : Var,
+"тип" : Type,
+"массив" : Arr,
+"большое" : Big,
+"маленькое" : Small,
+"цел" : Int,
+"вещ" : Float,
+"беззн" : Unsgn,
+"лог" : Bool,
+"симв" : Symb,
+"строка" : Str,
+"ничто" : Nothng,
+"байт" : Byte,
+"цел8" : Int8,
+"цел16" : Int16,
+"цел32" : Int32,
+"цел64" : Int64,
+"цел128" : Int128,
+"беззн8" : Unsgn8,
+"беззн16" : Unsgn16,
+"беззн32" : Unsgn32,
+"беззн64" : Unsgn64,
+"беззн128" : Unsgn128,
+"вещ32" : Float32,
+"вещ64" : Float64,
+"вещ128" : Float128,
+"лог8" : Bool8,
+"лог16" : Bool16,
+"лог32" : Bool32,
+"лог64" : Bool64,
+"симв8" : Symb8,
+"симв16" : Symb16,
+"симв32" : Symb32,
+"строка8" : Str8,
+"строка16" : Str16,
+"строка32" : Str32,
+"функция" : Func,
+"значение" : Val,
+"ссылка" : Ref,
+"конст ссылка" : Const Ref,
+"перечисление" : Enum,
+"структура" : Struct,
+"конст" : Const,
+"истина" : True,
+"ложь" : False,
+"если" : If,
+"то" : Then,
+"инес" : Ines,
+"иначе" : Else,
+"всё" : End,
+"завершение" : Compl,
+"пока" : While,
+"повторяй" : Rep,
+"покуда" : AsLongAs,
+"паук" : Spider,
+"при" : At,
+"выйди" : Break,
+"продолжи" : Continue,
+"возврат" : Back,
+"ввод" : Ins,
+"вывод" : Out,
+"разбор" : Pars
+
+%strings "buffer.clean();":"token.code=(buffer.length()==1)?Char:String;"
+{"([:ndq:]$write|""$write)*"}
+
+%delimiters
+
+%numbers "int_val = 0;
+          float_val = 0;
+          is_float = false;
+          integer_part = 0;
+          fractional_part = 0;
+          exponent = 1;
+          exp_sign = 1;
+          frac_part_num_digits = 0;
+          token.code = Integer;"
+          :
+          "
+          if(is_float){
+            token.float_val=build_float();
+            token.code = precision2code(precision);
+          } else {
+            token.int_val=integer_part;
+            token.code = Integer;
+          }"	
+          %action addHexDigit "integer_part = (integer_part << 4) + digit2int(ch);"
+          %action addDecDigit "integer_part = integer_part * 10 + digit2int(ch);"
+          %action addBinDigit "integer_part = (integer_part << 1) + digit2int(ch);"
+          %action addOctDigit "integer_part = (integer_part << 3) + digit2int(ch);"
+          %action setIsFloat "is_float = true;"
+          %action addDigitToDegree "exponent = exponent * 10 + digit2int(ch);"
+          %action addDecToFrac "fractional_part = fractional_part / 10 + digit2int(ch); frac_part_num_digits += 1;"
+          %action setExpSign "exp_sign = setexp(ch);"
+          %action setPrecision "precision = ch; is_float = true;"
+	                                
+{[:digits:]$addDecDigit('?[:digits:]$addDecDigit)*(.$setIsFloat[:digits:]$addDecToFrac('?[:digits:]$addDecToFrac*))
+?(((S|s)|(D|d)|(E|e)|(Q|q))$setPrecision(\+|-)$setExpSign?[:digits:]$addDigitToDegree('?[:digits:]$addDigitToDegree)*)?|
+0o[:odigits:]$addOctDigit('?[:odigits:]$addOctDigit)*|
+0(b|B)[:bdigits:]$addBinDigit('?[:bdigits:]$addBinDigit)*|
+0(x|X)[:xdigits:]$addHexDigit('?[:xdigits:]$addHexDigit)*}
