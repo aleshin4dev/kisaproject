@@ -1,7 +1,7 @@
-%scaner_name LexerScaner
-%codes_type lexem_code
+%scaner_name SLexScan
+%codes_type Slecsem_code
 
-%ident_name Id
+%ident_name SA
 
 %token_fields
 "unsigned __int128 int_val;
@@ -145,6 +145,87 @@ Pars
 {"([:ndq:]$write|""$write)*"}
 
 %delimiters
+"," : Comma,
+";" : Semicolon,
+"[" : SQ_obracket,
+"]" : SQ_cbracket,
+"@" : At_sign,
+"(" : Obracket,
+")" : Cbracket,
+":(" : Col_obr,
+":)" : Col_cbr,
+"(:" : Obr_col,
+"):" : Cbr_col,
+".|." : DbarD,
+"{" : Obrace,
+"}" : Cbrace,
+"?" : Qmark,
+"||" : Dbar,
+"!||" : Exmark_Dbar,
+"^^" : Dcaret,
+"!^^" : Exmark_Dcaret,
+"&&" : Dam,
+"!&&" : Exmark_Dam,
+"!" : Exmark,
+"<" : Lesss,
+">" : Mores,
+"<=" : LorEs,
+">=" : MorEs,
+"=" : Eqs,
+"!=" : Exmark_eqs,
+"|" : Bar,
+"~|" : Tilde_bar,
+"^" : Caret,
+"~^" : Tilde_caret,
+"&" : Am,
+"~&" : Tilde_am,
+"<<" : Dlesss,
+">>" : Dmores,
+">>>" : Tmores,
+"~" : Tilde,
+"+" : Pluss,
+"-" : Minuss,
+"*" : Muls,
+"/" : Divs,
+"%" : Per,
+"/." : Divs_dot,
+"**" : Dmuls,
+"**." : Dmuls_dot,
+"#" : Sharp,
+"##" : Dsharp,
+"|:" : Bar_col,
+"::" : Dcol,
+"<-" : Larrow,
+"[:" : SQobr_col,
+":]" : Col_sqcbr,
+"<:" : Lesss_col,
+":>" : Col_mores,
+":=" : Col_eqs,
+"+:=" : Pluss_ce,
+"-:=" : Minuss_ce,
+"*:=" : Muls_ce,
+"/:=" : Divs_ce,
+"/.:=" : Dd_ce,
+"**:=" : Dmuls_ce,
+"**.:=" : Dmsd_ce,
+"%:=" : Per_ce,
+"&:=" : Am_ce,
+"~&:=" : Ta_ce,
+"<<:=" : Dls_ce,
+">>:=" : Dms_ce,
+"|:=" : Bar_ce,
+"~|:=" : Tb_ce,
+"^:=" : Caret_ce,
+"~^:=" : Tc_ce,
+"||:=" : Db_ce,
+"!||:=" : Exmarkdb_ce,
+"^^:=" : Dc_ce,
+"!^^:=" : Exmarkdc_ce,
+"&&:=" : Dam_ce,
+"!&&:=" : Exmarkdam_ce,
+">>>:=" : Tmores_ce,
+"->" : Rarrow,
+"'?" : Apo_qmark
 
 %numbers "int_val = 0;
           float_val = 0;
