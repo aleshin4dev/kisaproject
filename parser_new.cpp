@@ -1,4 +1,4 @@
-std::shared_ptr<ast::Algebraic_type_component> Parser::Impl::proc_alg_type_component()
+std::shared_ptr<ast::Algebraic_type_component> Parser::Impl::proc_alg_type_component() // 10
 {
 	std::shared_ptr<ast::Algebraic_type_component> result;
 	enum class State{
@@ -117,7 +117,7 @@ std::shared_ptr<ast::Algebraic_type_component> Parser::Impl::proc_alg_type_compo
 	return result;
 }
 
-std::shared_ptr<ast::Enum_def> Parser::Impl::proc_enum_def()
+std::shared_ptr<ast::Enum_def> Parser::Impl::proc_enum_def() // 11
 {
 	std::shared_ptr<ast::Enum_def> result;
 	enum class State{
@@ -187,7 +187,7 @@ std::shared_ptr<ast::Enum_def> Parser::Impl::proc_enum_def()
 	return result;
 }
 
-std::shared_ptr<ast::Func_ptr> Parser::Impl::proc_func_ptr()
+std::shared_ptr<ast::Func_ptr> Parser::Impl::proc_func_ptr() // 12
 {
 	std::shared_ptr<ast::Func_ptr> result;
 	enum class State{
@@ -313,7 +313,7 @@ bool Parser::Impl::check2_var_name(ast::Id name)
     }
 }
 
-std::shared_ptr<ast::Formal_arg_info> Parser::Impl::proc_form_var()
+std::shared_ptr<ast::Formal_arg_info> Parser::Impl::proc_form_var() // 13
 {
 	std::shared_ptr<ast::Formal_arg_info> result;
 	enum class State{
@@ -409,7 +409,7 @@ std::shared_ptr<ast::Formal_arg_info> Parser::Impl::proc_form_var()
 	return result;
 }
 
-std::list<std::shared_ptr<ast::Definition>> Parser::Impl::proc_func_proto()
+std::list<std::shared_ptr<ast::Definition>> Parser::Impl::proc_func_proto() // 14
 {
     std::list<std::shared_ptr<ast::Definition>> result;
 	enum class State{
@@ -515,7 +515,7 @@ std::list<std::shared_ptr<ast::Definition>> Parser::Impl::proc_func_proto()
 	return result;
 }	
 
-std::list<std::shared_ptr<ast::Constant>> Parser::Impl::proc_const()
+std::list<std::shared_ptr<ast::Constant>> Parser::Impl::proc_const() // 15
 {
     std::list<std::shared_ptr<ast::Constant>> result;
 	enum class State{
@@ -628,7 +628,7 @@ std::list<std::shared_ptr<ast::Constant>> Parser::Impl::proc_const()
 
 
 
-std::shared_ptr<ast::Binary_op> Parser::Impl::proc_expr_eleven()
+std::shared_ptr<ast::Binary_op> Parser::Impl::proc_expr_eleven() // 28
 {
 	std::shared_ptr<ast::Binary_op> result;
 	enum class State{
@@ -701,7 +701,7 @@ std::shared_ptr<ast::Binary_op> Parser::Impl::proc_expr_eleven()
 	return result;
 }
 
-std::shared_ptr<ast::Alloc_array_expr> Parser::Impl::proc_expr_twelve()
+std::shared_ptr<ast::Alloc_array_expr> Parser::Impl::proc_expr_twelve() // 29
 {
 	std::shared_ptr<ast::Alloc_array_expr> result;
 	enum class State{
@@ -1021,7 +1021,7 @@ std::shared_ptr<ast::Alloc_array_expr> Parser::Impl::proc_expr_twelve()
 	return result;
 }
 
-std::shared_ptr<ast::Name> Parser::Impl::proc_name()
+std::shared_ptr<ast::Name> Parser::Impl::proc_name() // 30
 {
 	std::shared_ptr<ast::Name> result;
 	enum class State{
