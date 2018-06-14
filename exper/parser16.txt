@@ -1,0 +1,92 @@
+std::shared_ptr<ast::Statement> Parser::Impl::expression()
+{
+	std::shared_ptr<ast::Statement> result;
+	enum class State{
+		Start, Finf, Fins, Second, Third, Fourth
+	};
+	State state = State::Start;
+	std::shared_ptr<ast::Simplest_type_def> current_type;
+	
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt, sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;                    
+                }
+                state = State::Third; 
+				module_name = li.ident_index;
+                {
+                    scope::Id_info name;
+                    name.attr = scope::Id_attribute::Module_name;
+                    st_->insert(module_name, name);
+                }
+                break;
+			case State::Val:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt, sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;                    
+                }
+                state = State::Third; 
+				module_name = li.ident_index;
+                {
+                    scope::Id_info name;
+                    name.attr = scope::Id_attribute::Module_name;
+                    st_->insert(module_name, name);
+                }
+                break;
+			case State::Second:
+				if(cat != Lexem_category::Kw_ref){
+                    printf(expected_Kw_ref_fmt, sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;                    
+                }
+                state = State::Val; 
+                break;
+			case State::Third:
+				switch(cat){
+					case Lexem_category::Comma:
+						state = State::Val;
+						break;
+					case Lexem_category::Colon:
+						state = State::Fourth;
+						break;
+					default:
+                        printf(expected_comma_colon_fmt,
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+				}
+				break;
+			case State::Fourth:
+				switch(cat){
+					case Lexem_category::Kw_array:
+					case Lexem_category::At_sign:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Modified_type:
+					case Lexem_category::Non_modified_type:
+					case Lexem_category::Size_changer:
+                        sc_->back();
+                        current_type = proc_simplest_type_def();
+                        state = State::Five;
+                        break;
+					default:
+						sc_->back();
+						printf(expected_form_var_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+                break;
+			case State::Five
+                sc_->back();
+                return result; 
+		}
+	}
+	return result;
+}

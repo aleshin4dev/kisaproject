@@ -1,0 +1,298 @@
+std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_stmt()
+{
+	std::shared_ptr<ast::Loop_stmt> result;
+	enum class State{
+		Start, Prefix, Loop, Id, Suffix
+	};
+	State state = State::Start;
+	size_t loop_label_ = 0;
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				switch(cat){
+					case Lexem_category::Label_prefix:
+                        state = State::Prefix;
+                        break;
+					case Lexem_category::Kw_spider:
+					case Lexem_category::Kw_repeat:
+					case Lexem_category::Kw_while:
+					case Lexem_category::Kw_for:
+						sc_->back();
+						state = State::Loop;
+						break;
+					default:
+						printf(expected_prefix_loop_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Prefix:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Id;
+                break;
+			case State::Loop:
+				sc_->back();
+                return result;
+			case State::Id:
+				if(cat != Lexem_category::Label_suffix){
+                    printf(expected_label_suffix_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Suffix;
+                break;
+			case State::Suffix:
+				switch(cat){
+					case Lexem_category::Kw_spider:
+					case Lexem_category::Kw_repeat:
+					case Lexem_category::Kw_while:
+					case Lexem_category::Kw_for:
+						sc_->back();
+						state = State::Loop;
+						break;
+					default:
+						printf(expected_loop_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+		}
+	}
+	return result;
+}
+
+std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_without_label()
+{
+    std::shared_ptr<ast::Loop_stmt> result;
+    Main_lexem_info                li     = sc_->current_lexem();
+    Lexem_category                 cat    = get_lexem_category(li);
+    sc_->back();
+    switch(cat){
+        case Lexem_category::Kw_while:
+            result = proc_while_stmt();
+            break;
+        case Lexem_category::Kw_repeat:
+            result = proc_as_lomg_as_stmt();
+            break;
+		case Lexem_category::Kw_spider:
+            result = proc_spider_stmt();
+            break;
+        case Lexem_category::Kw_for:
+            result = proc_for_stmt();
+            break;	
+        default:
+            printf(expected_loop_without_label_fmt, sc_->lexem_begin_line_number());
+            et_.ec->increment_number_of_errors();
+    }
+    return result;
+}
+
+std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
+{
+	std::shared_ptr<ast::While_stmt> result;
+	enum class State{
+		Start, Second, Expression, Open_bracket, Block, Closed_bracket
+	};
+	State state = State::Start;
+	std::shared_ptr<Expr> condition;
+    ast::Block_body            body;
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				if(cat != Lexem_category::Kw_while){
+                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Second;
+                break;
+			case State::Second:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        condition = proc_expr();
+                        state = State::Expression;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Expression:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Open_bracket;
+                break;
+			case State::Open_bracket:
+				switch(cat){
+					case Lexem_category::Kw_var:
+                    case Lexem_category::Kw_type:
+                    case Lexem_category::Kw_function:
+                    case Lexem_category::Kw_const:
+					case Lexem_category::Semicolon:
+					case Lexem_category::Label_prefix:
+                    case Lexem_category::Kw_for:
+                    case Lexem_category::Kw_while:
+                    case Lexem_category::Kw_repeat:
+					case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Kw_exit:
+                    case Lexem_category::Kw_read:
+					case Lexem_category::Kw_print:
+                    case Lexem_category::Kw_if:
+                    case Lexem_category::Kw_match:
+						sc_->back();
+						body = proc_block_body();
+						state = State::Block;
+						break;
+					default:
+                        printf(expected_block_body_fmt,
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+				}
+				break;
+			case State::Block:
+				if(cat != Lexem_category::Closed_curly_bracket){
+                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Closed_bracket;
+                break;
+			case State::Closed_bracket:
+				sc_->back();
+                return result;
+		}
+	}
+	return result;
+}
+
+std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
+{
+	std::shared_ptr<ast::While_stmt> result;
+	enum class State{
+		Start, Second, Expression, Open_bracket, Block, Closed_bracket
+	};
+	State state = State::Start;
+	std::shared_ptr<Expr> condition;
+    ast::Block_body            body;
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				if(cat != Lexem_category::Kw_while){
+                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Second;
+                break;
+			case State::Second:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        condition = proc_expr();
+                        state = State::Expression;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Expression:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Open_bracket;
+                break;
+			case State::Open_bracket:
+				switch(cat){
+					case Lexem_category::Kw_var:
+                    case Lexem_category::Kw_type:
+                    case Lexem_category::Kw_function:
+                    case Lexem_category::Kw_const:
+					case Lexem_category::Semicolon:
+					case Lexem_category::Label_prefix:
+                    case Lexem_category::Kw_for:
+                    case Lexem_category::Kw_while:
+                    case Lexem_category::Kw_repeat:
+					case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Kw_exit:
+                    case Lexem_category::Kw_read:
+					case Lexem_category::Kw_print:
+                    case Lexem_category::Kw_if:
+                    case Lexem_category::Kw_match:
+						sc_->back();
+						body = proc_block_body();
+						state = State::Block;
+						break;
+					default:
+                        printf(expected_block_body_fmt,
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+				}
+				break;
+			case State::Block:
+				if(cat != Lexem_category::Closed_curly_bracket){
+                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Closed_bracket;
+                break;
+			case State::Closed_bracket:
+				sc_->back();
+                return result;
+		}
+	}
+	return result;
+}

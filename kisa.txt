@@ -28,15 +28,35 @@ Unsgn64,     Unsgn128,    Float32,      Float64,
 Float128,    Bool8,       Bool16,       Bool32,
 Bool64,      Symb8,       Symb16,       Symb32,
 Str8,        Str16,       Str32,        Func,
-Val,         Ref,         Const Ref,    Enum,
-Struct,      Const,       True,         False,
-If,          Then,        Ines,         Else,
-End,         Compl,       While,        Rep,
-AsLongAs,    Spider,      At,           Break,
-Continue,    Back,        Ins,          Out,
-Pars
+Val,         Ref,         Enum,         Struct,
+Const,       True,        False,        If,
+Then,        Ines,        Else,         End,
+Compl,       While,       Rep,          AsLongAs,
+Spider,      At,          Break,        Continue,
+Back,        Ins,         Out,          Pars,
+Comma,       Col,         Semicolon,    SQ_obracket,
+SQ_cbracket, At_sign,     Obracket,     Cbracket,
+Col_obr,     Col_cbr,     Obr_col,      Cbr_col,
+DbarD,       Obrace,      Cbrace,       Qmark,
+Dbar,        Exmark_Dbar, Dcaret,       Exmark_Dcaret,
+Dam,         Exmark_Dam,  Exmark,       Lesss,
+Mores,       LorEs,       MorEs,        Eqs,
+Exmark_eqs,  Bar,         Tilde_bar,    Caret,
+Tilde_caret, Am,          Tilde_am,     Dlesss,
+Dmores,      Tmores,      Tilde,        Pluss,
+Minuss,      Muls,        Divs,         Per,
+Divs_dot,    Dmuls,       Dmuls_dot,    Sharp,
+Dsharp,      Bar_col,     Dcol,         Larrow,
+SQobr_col,   Col_sqcbr,   Lesss_col,    Col_mores,
+Col_eqs,     Pluss_ce,    Minuss_ce,    Muls_ce,
+Divs_ce,     Dd_ce,       Dmuls_ce,     Dmsd_ce,
+Per_ce,      Am_ce,       Ta_ce,        Dls_ce,
+Dms_ce,      Bar_ce,      Tb_ce,        Caret_ce,
+Tc_ce,       Db_ce,       Exmarkdb_ce,  Dc_ce,
+Exmarkdc_ce, Dam_ce,      Exmarkdam_ce, Tmores_ce,
+Rarrow,      Obr_dd_obr
 
-%idents {[:Letter:]|[:letter:]|_}{[:Letter:]|[:letter:]|_|[:digits:]}
+%idents "buffer.clear();" : "" {([:Letter:]|[:letter:]|_)$write([:Letter:]|[:letter:]|_|[:digits:])$write*}
 
 %impl_additions "
   #include <quadmath>
@@ -75,77 +95,28 @@ Pars
 "
 
 %keywords
-"модуль" : Mod,
-"использует" : Use, 
-"предоставляет" : Get,
-"перем" : Var,
-"тип" : Type,
-"массив" : Arr,
-"большое" : Big,
-"маленькое" : Small,
-"цел" : Int,
-"вещ" : Float,
-"беззн" : Unsgn,
-"лог" : Bool,
-"симв" : Symb,
-"строка" : Str,
-"ничто" : Nothng,
-"байт" : Byte,
-"цел8" : Int8,
-"цел16" : Int16,
-"цел32" : Int32,
-"цел64" : Int64,
-"цел128" : Int128,
-"беззн8" : Unsgn8,
-"беззн16" : Unsgn16,
-"беззн32" : Unsgn32,
-"беззн64" : Unsgn64,
-"беззн128" : Unsgn128,
-"вещ32" : Float32,
-"вещ64" : Float64,
-"вещ128" : Float128,
-"лог8" : Bool8,
-"лог16" : Bool16,
-"лог32" : Bool32,
-"лог64" : Bool64,
-"симв8" : Symb8,
-"симв16" : Symb16,
-"симв32" : Symb32,
-"строка8" : Str8,
-"строка16" : Str16,
-"строка32" : Str32,
-"функция" : Func,
-"значение" : Val,
-"ссылка" : Ref,
-"конст ссылка" : Const Ref,
-"перечисление" : Enum,
-"структура" : Struct,
-"конст" : Const,
-"истина" : True,
-"ложь" : False,
-"если" : If,
-"то" : Then,
-"инес" : Ines,
-"иначе" : Else,
-"всё" : End,
-"завершение" : Compl,
-"пока" : While,
-"повторяй" : Rep,
-"покуда" : AsLongAs,
-"паук" : Spider,
-"при" : At,
-"выйди" : Break,
-"продолжи" : Continue,
-"возврат" : Back,
-"ввод" : Ins,
-"вывод" : Out,
-"разбор" : Pars
 
-%strings "buffer.clean();":"token.code=(buffer.length()==1)?Char:String;"
-{"([:ndq:]$write|""$write)*"}
+%strings "buffer.clear();":"token.code=(buffer.length()==1)?Char:String;"
+
+%action write_by_code "buffer += char_code;"
+%action add_dec_digit_to_char_code "char_code = char_code * 10 + digit2int(ch);"
+%action add_oct_digit_to_char_code "char_code = char_code * 8 + digit2int(ch);"
+%action add_bin_digit_to_char_code "char_code = char_code * 2 + digit2int(ch);"
+%action add_hex_digit_to_char_code "char_code = char_code * 16 + digit2int(ch);"
+{
+(\$([:digits:]$add_dec_digit_to_char_code('?[:digits:]$add_dec_digit_to_char_code)*|
+   0o[:odigits:]$add_oct_digit_to_char_code('?[:odigits:]$add_oct_digit_to_char_code)*|
+0(b|B)[:bdigits:]$add_bin_digit_to_char_code('?[:bdigits:]$add_bin_digit_to_char_code)*|
+0(x|X)[:xdigits:]$add_hex_digit_to_char_code('?[:xdigits:]$add_hex_digit_to_char_code)*)$write_by_code)*|
+("([:ndq:]$write|""$write)*"(\$([:digits:]$add_dec_digit_to_char_code('?[:digits:]$add_dec_digit_to_char_code)*|
+   0o[:odigits:]$add_oct_digit_to_char_code('?[:odigits:]$add_oct_digit_to_char_code)*|
+0(b|B)[:bdigits:]$add_bin_digit_to_char_code('?[:bdigits:]$add_bin_digit_to_char_code)*|
+0(x|X)[:xdigits:]$add_hex_digit_to_char_code('?[:xdigits:]$add_hex_digit_to_char_code)*)$write_by_code)+)*
+} 
 
 %delimiters
 "," : Comma,
+":" : Col,
 ";" : Semicolon,
 "[" : SQ_obracket,
 "]" : SQ_cbracket,
@@ -225,7 +196,7 @@ Pars
 "!&&:=" : Exmarkdam_ce,
 ">>>:=" : Tmores_ce,
 "->" : Rarrow,
-"'?" : Apo_qmark
+"{..}" : Obr_dd_obr
 
 %numbers "int_val = 0;
           float_val = 0;
