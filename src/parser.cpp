@@ -2536,6 +2536,512 @@ std::shared_ptr<ast::Binary_op> Parser::Impl::proc_expr_eleven() // 28
 	return result;
 }
 
+std::shared_ptr<ast::Alloc_array_expr> Parser::Impl::proc_expr_twelve() // 29
+{
+	std::shared_ptr<ast::Alloc_array_expr> result;
+	enum class State{
+		Start, Finish, CBracket, DName, EArray, Factor, 
+		GFirst_Expr, HOpen_curly, IFirst_Array_open,
+		KSecond_Array_open, MIdent, NType, OList, PArrow,
+		QFirst_Array_closed, RSemi, Second_Expr, 
+		TNew_open_curly, USecond_Type, XSecond_List
+	};
+	State state = State::Start;
+	
+	std::shared_ptr<ast::Expr> expr;
+	ast::Id   current_name = 0;
+	std::shared_ptr<ast::Name> name;
+	std::shared_ptr<ast::Elementary_type> elem_type;
+	std::shared_ptr<ast::Actual_args> list;
+	
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				switch(cat){
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+                        state = State::Finish;
+                        break;
+					case Lexem_category::Open_round_bracket:
+						state = State::CBracket;
+						break;
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Ident:
+						sc_->back();
+						name = proc_name();
+						state = State::DName;
+						break;
+					case Lexem_category::Kw_array:
+						state = State::EArray;
+						break;
+					case Lexem_category::Kw_alloc:
+						state = State::Factor;
+						break;
+					default:
+						printf(expected_int_float_string_true_false_bracket_prefix_array_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Finish:
+				sc_->back();
+                return result;
+			case State::CBracket:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        expr = proc_expr();
+                        state = State::GFirst_Expr;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::DName:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    sc_->back();                    
+                    return result;
+                }else{
+                    state = State::HOpen_curly;
+                }
+                break;
+			case State::EArray:
+				if(cat != Lexem_category::Allocated_array_open){
+                    printf(expected_allocated_array_open_size_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::IFirst_Array_open;
+                break;
+			case State::Factor:
+				switch(cat){
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Ident:
+						sc_->back();
+						name = proc_name();
+						state = State::Finish;
+						break;
+					case Lexem_category::Allocated_array_open:
+						state = State::KSecond_Array_open;
+						break;
+					default:
+						printf(expected_name_allocated_array_open_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::GFirst_Expr:
+				if(cat != Lexem_category::Closed_round_bracket){
+                    printf(expected_closed_round_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Finish;
+                break;
+			case State::HOpen_curly:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::MIdent;
+                break;
+			case State::IFirst_Array_open:
+				switch(cat){
+                    case Lexem_category::At_sign:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Modified_type:
+                    case Lexem_category::Non_modified_type:
+                    case Lexem_category::Size_changer:
+                        sc_->back();
+                        elem_type = proc_elementary_type();
+                        state     = State::NType;                        
+                        break;
+                    default:
+                        printf(expected_elem_type_fmt, 
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+                }
+                break;
+			case State::KSecond_Array_open:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        list = proc_expr_list();
+                        state = State::OList;
+                        break;
+					default:
+						printf(expected_expression_list_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::MIdent:
+				if(cat != Lexem_category::Assign_to_field){
+                    printf(expected_assign_to_field_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::PArrow;
+                break;
+			case State::NType:
+				if(cat != Lexem_category::Allocated_array_close){
+                    printf(expected_allocated_array_close_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::QFirst_Array_closed;
+                break;
+			case State::OList:
+				if(cat != Lexem_category::Semicolon){
+                    printf(expected_semicolon_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::RSemi;
+                break;
+			case State::PArrow:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        expr = proc_expr();
+                        state = State::Second_Expr;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::QFirst_Array_closed:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::TNew_open_curly;
+                break;
+			case State::RSemi:
+				switch(cat){
+                    case Lexem_category::At_sign:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Modified_type:
+                    case Lexem_category::Non_modified_type:
+                    case Lexem_category::Size_changer:
+                        sc_->back();
+                        elem_type = proc_elementary_type();
+                        state     = State::USecond_Type;                        
+                        break;
+                    default:
+                        printf(expected_elem_type_fmt, 
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+                }
+                break;
+			case State::Second_Expr:
+				switch(cat){
+                    case Lexem_category::Closed_curly_bracket:
+                        state     = State::Finish;                        
+                        break;
+					case Lexem_category::Comma:
+                        state     = State::HOpen_curly;                        
+                        break;
+                    default:
+                        printf(expected_closed_curly_bracket_comma_fmt, 
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+                }
+                break;
+			case State::TNew_open_curly:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        list = proc_expr_list();
+                        state = State::XSecond_List;
+                        break;
+					default:
+						printf(expected_expression_list_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::USecond_Type:
+				if(cat != Lexem_category::Allocated_array_close){
+                    printf(expected_allocated_array_close_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Finish;
+                break;
+			case State::XSecond_List:
+				if(cat != Lexem_category::Closed_curly_bracket){
+                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Finish;
+                break;
+		}
+	}
+	return result;
+}
+
+std::shared_ptr<ast::Name> Parser::Impl::proc_name() // 30
+{
+	std::shared_ptr<ast::Name> result;
+	enum class State{
+		Start, BModule_prefix, CId, DIdent, EResolution, 
+		FOpen_round, GOpen_square, HClose, IDot,
+		LFirst_component, MSecond_component
+	};
+	State state = State::Start;
+	
+	ast::Id module_name    = 0;
+    ast::Id type_name      = 0;
+    ast::Id type_part_name = 0;
+    ast::Id id            = 0;
+    std::list<std::shared_ptr<Name_component>> components;
+	
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				switch(cat){
+					case Lexem_category::Module_name_prefix:
+                        state = State::BModule_prefix;
+                        break;
+					case Lexem_category::Ident:
+						state = State::CId;
+						break;
+					default:
+						printf(expected_prefix_ident_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::BModule_prefix:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::DIdent;
+                break;
+			case State::CId:
+				switch(cat){
+					case Lexem_category::Scope_resolution:
+                        state = State::EResolution;
+                        break;
+					case Lexem_category::Open_round_bracket:
+						state = State::FOpen_round;
+						break;
+					case Lexem_category::Open_square_bracket:
+						state = State::GOpen_square;
+						break;
+					case Lexem_category::At_sign:
+						state = State::HClose;
+						break;
+					case Lexem_category::Dot:
+						state = State::IDot;
+						break;
+					default:
+						sc_->back();                    
+						return result;	
+				}
+				break;
+			case State::DIdent:
+				if(cat != Lexem_category::Scope_resolution){
+                    printf(expected_scope_resolution_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::EResolution;
+                break;
+			case State::EResolution:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::CId;
+                break;
+			case State::FOpen_round:
+				switch(cat){
+					case Lexem_category::Closed_round_bracket:
+                        state = State::HClose;
+                        break;
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        components = proc_expr_list();
+                        state = State::LFirst_component;
+                        break;
+					default:
+						printf(expected_bracket_component_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::GOpen_square:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        components = proc_expr_list();
+                        state = State::MSecond_component;
+                        break;
+					default:
+						printf(expected_component_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::HClose:
+				switch(cat){
+					case Lexem_category::Open_round_bracket:
+						state = State::FOpen_round;
+						break;
+					case Lexem_category::Open_square_bracket:
+						state = State::GOpen_square;
+						break;
+					case Lexem_category::At_sign:
+						state = State::HClose;
+						break;
+					case Lexem_category::Dot:
+						state = State::IDot;
+						break;
+					default:
+						sc_->back();                    
+						return result;	
+				}
+				break;
+			case State::IDot:
+				if(cat != Lexem_category::Ident){
+                    printf(expected_ident_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::HClose;
+                break;
+			case State::LFirst_component:
+				if(cat != Lexem_category::Closed_round_bracket){
+                    printf(expected_closed_round_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::HClose;
+                break;
+			case State::MSecond_component:
+				if(cat != Lexem_category::Closed_square_bracket){
+                    printf(expected_closed_square_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::HClose;
+                break;
+		}
+	}
+	return result;
+}
+
 std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_stmt() // 31
 {
 	std::shared_ptr<ast::Loop_stmt> result;
@@ -2602,234 +3108,6 @@ std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_stmt() // 31
 						return result;	
 				}
 				break;
-		}
-	}
-	return result;
-}
-
-std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_without_label()
-{
-    std::shared_ptr<ast::Loop_stmt> result;
-    Main_lexem_info                li     = sc_->current_lexem();
-    Lexem_category                 cat    = get_lexem_category(li);
-    sc_->back();
-    switch(cat){
-        case Lexem_category::Kw_while:
-            result = proc_while_stmt();
-            break;
-        case Lexem_category::Kw_repeat:
-            result = proc_as_lomg_as_stmt();
-            break;
-		case Lexem_category::Kw_spider:
-            result = proc_spider_stmt();
-            break;
-        case Lexem_category::Kw_for:
-            result = proc_for_stmt();
-            break;	
-        default:
-            printf(expected_loop_without_label_fmt, sc_->lexem_begin_line_number());
-            et_.ec->increment_number_of_errors();
-    }
-    return result;
-}
-
-std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
-{
-	std::shared_ptr<ast::While_stmt> result;
-	enum class State{
-		Start, Second, Expression, Open_bracket, Block, Closed_bracket
-	};
-	State state = State::Start;
-	std::shared_ptr<Expr> condition;
-    ast::Block_body            body;
-	for(;;){
-		Main_lexem_info li = sc_->current_lexem();
-		Lexem_category cat = get_lexem_category(li);
-		switch(state){
-			case State::Start:
-				if(cat != Lexem_category::Kw_while){
-                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Second;
-                break;
-			case State::Second:
-				switch(cat){
-					case Lexem_category::Logical_not:
-					case Lexem_category::Bitwise_not:
-					case Lexem_category::Plus:
-					case Lexem_category::Minus:
-					case Lexem_category::Sizeof:
-					case Lexem_category::Kw_int:
-					case Lexem_category::Kw_float:
-					case Lexem_category::Kw_string:
-					case Lexem_category::Kw_true:
-					case Lexem_category::Kw_false:
-					case Lexem_category::Open_round_bracket:
-					case Lexem_category::Ident:
-					case Lexem_category::Module_name_prefix:
-					case Lexem_category::Kw_array:
-                        sc_->back();
-                        condition = proc_expr();
-                        state = State::Expression;
-                        break;
-					default:
-						printf(expected_expression_fmt, 
-								sc_->lexem_begin_line_number());
-						et_.ec->increment_number_of_errors();
-						return result;	
-				}
-				break;
-			case State::Expression:
-				if(cat != Lexem_category::Open_curly_bracket){
-                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Open_bracket;
-                break;
-			case State::Open_bracket:
-				switch(cat){
-					case Lexem_category::Kw_var:
-                    case Lexem_category::Kw_type:
-                    case Lexem_category::Kw_function:
-                    case Lexem_category::Kw_const:
-					case Lexem_category::Semicolon:
-					case Lexem_category::Label_prefix:
-                    case Lexem_category::Kw_for:
-                    case Lexem_category::Kw_while:
-                    case Lexem_category::Kw_repeat:
-					case Lexem_category::Module_name_prefix:
-                    case Lexem_category::Ident:
-                    case Lexem_category::Kw_exit:
-                    case Lexem_category::Kw_read:
-					case Lexem_category::Kw_print:
-                    case Lexem_category::Kw_if:
-                    case Lexem_category::Kw_match:
-						sc_->back();
-						body = proc_block_body();
-						state = State::Block;
-						break;
-					default:
-                        printf(expected_block_body_fmt,
-                               sc_->lexem_begin_line_number());
-                        et_.ec->increment_number_of_errors();
-                        return result;
-				}
-				break;
-			case State::Block:
-				if(cat != Lexem_category::Closed_curly_bracket){
-                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Closed_bracket;
-                break;
-			case State::Closed_bracket:
-				sc_->back();
-                return result;
-		}
-	}
-	return result;
-}
-
-std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
-{
-	std::shared_ptr<ast::While_stmt> result;
-	enum class State{
-		Start, Second, Expression, Open_bracket, Block, Closed_bracket
-	};
-	State state = State::Start;
-	std::shared_ptr<Expr> condition;
-    ast::Block_body            body;
-	for(;;){
-		Main_lexem_info li = sc_->current_lexem();
-		Lexem_category cat = get_lexem_category(li);
-		switch(state){
-			case State::Start:
-				if(cat != Lexem_category::Kw_while){
-                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Second;
-                break;
-			case State::Second:
-				switch(cat){
-					case Lexem_category::Logical_not:
-					case Lexem_category::Bitwise_not:
-					case Lexem_category::Plus:
-					case Lexem_category::Minus:
-					case Lexem_category::Sizeof:
-					case Lexem_category::Kw_int:
-					case Lexem_category::Kw_float:
-					case Lexem_category::Kw_string:
-					case Lexem_category::Kw_true:
-					case Lexem_category::Kw_false:
-					case Lexem_category::Open_round_bracket:
-					case Lexem_category::Ident:
-					case Lexem_category::Module_name_prefix:
-					case Lexem_category::Kw_array:
-                        sc_->back();
-                        condition = proc_expr();
-                        state = State::Expression;
-                        break;
-					default:
-						printf(expected_expression_fmt, 
-								sc_->lexem_begin_line_number());
-						et_.ec->increment_number_of_errors();
-						return result;	
-				}
-				break;
-			case State::Expression:
-				if(cat != Lexem_category::Open_curly_bracket){
-                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Open_bracket;
-                break;
-			case State::Open_bracket:
-				switch(cat){
-					case Lexem_category::Kw_var:
-                    case Lexem_category::Kw_type:
-                    case Lexem_category::Kw_function:
-                    case Lexem_category::Kw_const:
-					case Lexem_category::Semicolon:
-					case Lexem_category::Label_prefix:
-                    case Lexem_category::Kw_for:
-                    case Lexem_category::Kw_while:
-                    case Lexem_category::Kw_repeat:
-					case Lexem_category::Module_name_prefix:
-                    case Lexem_category::Ident:
-                    case Lexem_category::Kw_exit:
-                    case Lexem_category::Kw_read:
-					case Lexem_category::Kw_print:
-                    case Lexem_category::Kw_if:
-                    case Lexem_category::Kw_match:
-						sc_->back();
-						body = proc_block_body();
-						state = State::Block;
-						break;
-					default:
-                        printf(expected_block_body_fmt,
-                               sc_->lexem_begin_line_number());
-                        et_.ec->increment_number_of_errors();
-                        return result;
-				}
-				break;
-			case State::Block:
-				if(cat != Lexem_category::Closed_curly_bracket){
-                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
-                    et_.ec->increment_number_of_errors();
-                    return result;
-                }
-                state = State::Closed_bracket;
-                break;
-			case State::Closed_bracket:
-				sc_->back();
-                return result;
 		}
 	}
 	return result;
@@ -3205,6 +3483,234 @@ std::shared_ptr<ast::Expr> Parser::Impl::pars_expr() // 38
 			case State::Fourt:
                 sc_->back();
                 return result; 
+		}
+	}
+	return result;
+}
+
+std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_without_label()
+{
+    std::shared_ptr<ast::Loop_stmt> result;
+    Main_lexem_info                li     = sc_->current_lexem();
+    Lexem_category                 cat    = get_lexem_category(li);
+    sc_->back();
+    switch(cat){
+        case Lexem_category::Kw_while:
+            result = proc_while_stmt();
+            break;
+        case Lexem_category::Kw_repeat:
+            result = proc_as_lomg_as_stmt();
+            break;
+		case Lexem_category::Kw_spider:
+            result = proc_spider_stmt();
+            break;
+        case Lexem_category::Kw_for:
+            result = proc_for_stmt();
+            break;	
+        default:
+            printf(expected_loop_without_label_fmt, sc_->lexem_begin_line_number());
+            et_.ec->increment_number_of_errors();
+    }
+    return result;
+}
+
+std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
+{
+	std::shared_ptr<ast::While_stmt> result;
+	enum class State{
+		Start, Second, Expression, Open_bracket, Block, Closed_bracket
+	};
+	State state = State::Start;
+	std::shared_ptr<Expr> condition;
+    ast::Block_body            body;
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				if(cat != Lexem_category::Kw_while){
+                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Second;
+                break;
+			case State::Second:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        condition = proc_expr();
+                        state = State::Expression;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Expression:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Open_bracket;
+                break;
+			case State::Open_bracket:
+				switch(cat){
+					case Lexem_category::Kw_var:
+                    case Lexem_category::Kw_type:
+                    case Lexem_category::Kw_function:
+                    case Lexem_category::Kw_const:
+					case Lexem_category::Semicolon:
+					case Lexem_category::Label_prefix:
+                    case Lexem_category::Kw_for:
+                    case Lexem_category::Kw_while:
+                    case Lexem_category::Kw_repeat:
+					case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Kw_exit:
+                    case Lexem_category::Kw_read:
+					case Lexem_category::Kw_print:
+                    case Lexem_category::Kw_if:
+                    case Lexem_category::Kw_match:
+						sc_->back();
+						body = proc_block_body();
+						state = State::Block;
+						break;
+					default:
+                        printf(expected_block_body_fmt,
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+				}
+				break;
+			case State::Block:
+				if(cat != Lexem_category::Closed_curly_bracket){
+                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Closed_bracket;
+                break;
+			case State::Closed_bracket:
+				sc_->back();
+                return result;
+		}
+	}
+	return result;
+}
+
+std::shared_ptr<ast::While_stmt> Parser::Impl::proc_while_stmt()
+{
+	std::shared_ptr<ast::While_stmt> result;
+	enum class State{
+		Start, Second, Expression, Open_bracket, Block, Closed_bracket
+	};
+	State state = State::Start;
+	std::shared_ptr<Expr> condition;
+    ast::Block_body            body;
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+		switch(state){
+			case State::Start:
+				if(cat != Lexem_category::Kw_while){
+                    printf(expected_kw_while_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Second;
+                break;
+			case State::Second:
+				switch(cat){
+					case Lexem_category::Logical_not:
+					case Lexem_category::Bitwise_not:
+					case Lexem_category::Plus:
+					case Lexem_category::Minus:
+					case Lexem_category::Sizeof:
+					case Lexem_category::Kw_int:
+					case Lexem_category::Kw_float:
+					case Lexem_category::Kw_string:
+					case Lexem_category::Kw_true:
+					case Lexem_category::Kw_false:
+					case Lexem_category::Open_round_bracket:
+					case Lexem_category::Ident:
+					case Lexem_category::Module_name_prefix:
+					case Lexem_category::Kw_array:
+                        sc_->back();
+                        condition = proc_expr();
+                        state = State::Expression;
+                        break;
+					default:
+						printf(expected_expression_fmt, 
+								sc_->lexem_begin_line_number());
+						et_.ec->increment_number_of_errors();
+						return result;	
+				}
+				break;
+			case State::Expression:
+				if(cat != Lexem_category::Open_curly_bracket){
+                    printf(expected_open_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Open_bracket;
+                break;
+			case State::Open_bracket:
+				switch(cat){
+					case Lexem_category::Kw_var:
+                    case Lexem_category::Kw_type:
+                    case Lexem_category::Kw_function:
+                    case Lexem_category::Kw_const:
+					case Lexem_category::Semicolon:
+					case Lexem_category::Label_prefix:
+                    case Lexem_category::Kw_for:
+                    case Lexem_category::Kw_while:
+                    case Lexem_category::Kw_repeat:
+					case Lexem_category::Module_name_prefix:
+                    case Lexem_category::Ident:
+                    case Lexem_category::Kw_exit:
+                    case Lexem_category::Kw_read:
+					case Lexem_category::Kw_print:
+                    case Lexem_category::Kw_if:
+                    case Lexem_category::Kw_match:
+						sc_->back();
+						body = proc_block_body();
+						state = State::Block;
+						break;
+					default:
+                        printf(expected_block_body_fmt,
+                               sc_->lexem_begin_line_number());
+                        et_.ec->increment_number_of_errors();
+                        return result;
+				}
+				break;
+			case State::Block:
+				if(cat != Lexem_category::Closed_curly_bracket){
+                    printf(expected_closed_curly_bracket_fmt,  sc_->lexem_begin_line_number());
+                    et_.ec->increment_number_of_errors();
+                    return result;
+                }
+                state = State::Closed_bracket;
+                break;
+			case State::Closed_bracket:
+				sc_->back();
+                return result;
 		}
 	}
 	return result;
