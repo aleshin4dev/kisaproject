@@ -3113,6 +3113,210 @@ std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_stmt() // 31
 	return result;
 }
 
+std::shared_ptr<ast::Loop_stmt> Parser::Impl::proc_loop_without_label() // 32
+{
+    std::shared_ptr<ast::Loop_stmt> result;
+    Main_lexem_info                li     = sc_->current_lexem();
+    Lexem_category                 cat    = get_lexem_category(li);
+    sc_->back();
+    switch(cat){
+        case Lexem_category::Kw_while:
+            result = proc_while_stmt();
+            break;
+        case Lexem_category::Kw_repeat:
+            result = proc_as_lomg_as_stmt();
+            break;
+		case Lexem_category::Kw_spider:
+            result = proc_spider_stmt();
+            break;
+        case Lexem_category::Kw_for:
+            result = proc_for_stmt();
+            break;	
+        default:
+            printf(expected_loop_without_label_fmt, sc_->lexem_begin_line_number());
+            et_.ec->increment_number_of_errors();
+    }
+    return result;
+}
+
+std::shared_ptr<ast::If_stmt> Parser::Impl::proc_if_stmt() // 33
+{
+	std::shared_ptr<ast::If_stmt> result;
+	enum class State{
+		Start, Val, Second, Third, Fourth, Five, Six, Seven, Eight, Nine, Ten, Finish
+	};
+	State state = State::Start;
+	std::shared_ptr<ast::Kw_if> current_type;
+	scope::Id_info     id_info;
+
+	for(;;){
+		Main_lexem_info li = sc_->current_lexem();
+		Lexem_category cat = get_lexem_category(li);
+
+		switch(state){
+		case State::Start:
+			if(cat != Lexem_category::Kw_if){
+				printf(expected_Kw_if_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Val; 
+			break;
+
+		case State::Val:
+			if(cat != Lexem_category::Exp){
+				printf(expected_Exp_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Second; 
+			break;
+
+		case State::Second:
+			if(cat != Lexem_category::Kw_then){
+				printf(expected_kw_then_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Thrid; 
+			break;
+
+		case State::Thrid:
+			if(cat != Lexem_category::Open_curly_bracket){
+				printf(expected_open_curly_bracket_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Fourth; 
+			break;
+
+		case State::Fourth:
+			switch(cat){
+			case Lexem_category::Kw_var:
+			case Lexem_category::Kw_type:
+			case Lexem_category::Kw_function:
+			case Lexem_category::Kw_const:
+			case Lexem_category::Less_than:			
+			case Lexem_category::Module_name_prefix:
+			case Lexem_category::Semicolon:
+			case Lexem_category::Kw_for:
+			case Lexem_category::Kw_while:
+			case Lexem_category::Kw_repeat:
+			case Lexem_category::Kw_as_long_as:
+			case Lexem_category::Kw_spider:
+			case Lexem_category::Kw_exit:
+			case Lexem_category::Kw_read:
+			case Lexem_category::Kw_print:
+			case Lexem_category::Kw_if:
+			case Lexem_category::Kw_match:
+				sc_->back();
+				current_type = proc_block_body();
+				state = State::Block_body;
+				break;
+			default:
+				printf(expected var_type_func_const_than_mnp_less_semic_for_while_repeat_ala_spider_exit_read_print_if_match, 
+					sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;
+			}
+			state = State::Five; 
+			break;
+
+		case State::Five:
+			switch(cat){
+			case Lexem_category::Closed_curly_bracket:
+				state = State::Six;
+				break;
+			case Lexem_category::Kw_elif:
+				state = State::Val;
+				break;
+			default:
+				printf(expected_ccb_elif_fmt,
+					sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;
+			}
+			break;
+		case State::Six:
+			switch(cat){
+			case Lexem_category::Kw_else:
+				state = State::Seven;
+				break;
+			case Lexem_category::Kw_endif:
+				state = State::Val;
+				break;
+				state = State::Eleven:
+				break;
+			default:
+				printf(expected_ccb_elif_fmt,
+					sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;
+			}
+			break;
+		case State::Seven:
+			if(cat != Lexem_category::Open_curly_bracket){
+				printf(expected_open_curly_bracket_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Eight; 
+			break;
+		case State::Eight:
+			switch(cat){
+			case Lexem_category::Kw_var:
+			case Lexem_category::Kw_type:
+			case Lexem_category::Kw_function:
+			case Lexem_category::Kw_const:
+			case Lexem_category::Less_than:			
+			case Lexem_category::Module_name_prefix:
+			case Lexem_category::Semicolon:
+			case Lexem_category::Kw_for:
+			case Lexem_category::Kw_while:
+			case Lexem_category::Kw_repeat:
+			case Lexem_category::Kw_as_long_as:
+			case Lexem_category::Kw_spider:
+			case Lexem_category::Kw_exit:
+			case Lexem_category::Kw_read:
+			case Lexem_category::Kw_print:
+			case Lexem_category::Kw_if:
+			case Lexem_category::Kw_match:
+				sc_->back();
+				current_type = proc_block_body();
+				state = State::Block_body;
+				break;
+			default:
+				printf(expected var_type_func_const_than_mnp_less_semic_for_while_repeat_ala_spider_exit_read_print_if_match, 
+					sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;
+			}
+			state = State::Nine; 
+			break;
+		case State::Nine:
+			if(cat != Lexem_category::Close_curly_bracket){
+				printf(expected_close_curly_bracket_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Ten; 
+			break;
+		case State::Ten:
+			if(cat != Lexem_category::Kw_endif){
+				printf(expected_Kw_endif_fmt, sc_->lexem_begin_line_number());
+				et_.ec->increment_number_of_errors();
+				return result;                    
+			}
+			state = State::Eleven; 
+			break;
+		case State::Eleven:
+			sc_->back();
+			return result; 
+		}
+	}
+	return result;
+}
+
 std::shared_ptr<ast::Assign_stmt> Parser::Impl::assign() // 34
 {
 	std::shared_ptr<ast::Assign_stmt> result;
