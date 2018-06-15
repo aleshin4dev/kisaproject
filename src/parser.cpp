@@ -1606,7 +1606,7 @@ std::list<std::shared_ptr<ast::Constant>> Parser::Impl::proc_const() // 15
     return result;
 }
 
-std::shared_ptr<ast::Binary_op > Parser::Bin::input() // 16
+std::shared_ptr<ast::Binary_op > Parser::Bin::prog_export() // 16
 {
 	std::shared_ptr<ast::Binary_op > result;
 	enum class State{
@@ -1667,7 +1667,7 @@ case State::Five:
 	return result;
 }
 
-std::shared_ptr<ast::Binary_op > Parser::Bin::input() // 17
+std::shared_ptr<ast::Binary_op > Parser::Bin::prog_export_info() // 17
 {
 	std::shared_ptr<ast::Binary_op > result;
 	enum class State{
@@ -1709,7 +1709,7 @@ std::shared_ptr<ast::Binary_op > Parser::Bin::input() // 17
         }
 }       
 
-std::shared_ptr<ast::Binary_op > Parser::Bin::input() // 18
+std::shared_ptr<ast::Binary_op > Parser::Bin::exp() // 18
 {
     std::shared_ptr<ast::Binary_op > result;
     enum class State{
